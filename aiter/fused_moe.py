@@ -147,6 +147,16 @@ def _adaptive_moe_sort(
     empty_bf16 = _empty_bf16(device)
     bf16_zero = moe_buf if (atomic and BM == 16) else empty_bf16
 
+    # threestage-sort scratch (prologue==1, i.e. BM != 16). Previously allocated
+    # via torch::empty inside the kernel; now passed in so the C++ TU is torch-free.
+    # Size = NE*kSplitSortCtas + NE int32; kSplitSortCtas=16 mirrors
+    # csrc/kernels/mxfp4_moe/moe_aux/codegen/mxfp4_moe_aux_dispatch.h.
+    sort3stage_ws = (
+        torch.empty(0, dtype=dtypes.i32, device=device)
+        if BM == 16
+        else torch.empty(num_experts * 17, dtype=dtypes.i32, device=device)
+    )
+
     aiter.mxfp4_moe_sort(
         topk_ids=topk_ids,
         topk_weight=topk_weights,
@@ -158,6 +168,7 @@ def _adaptive_moe_sort(
         m_indices=m_indices,
         bf16_zero_out=bf16_zero,
         bf16_zero_workspace=empty_bf16,
+        sort3stage_ws=sort3stage_ws,
         M_logical=M,
         NE=num_experts,
         TOPK=topk,
@@ -3084,6 +3095,18 @@ def fused_moe_2stages(
             M = sorted_ids.shape[0]
             a1_scale = torch.ones(
                 [M, a1.shape[-1] // 32], dtype=dtypes.fp8_e8m0, device=a1.device
+            )
+        elif hidden_states.dtype == dtypes.fp8 and a1_scale is not None:
+            # MXFP8 dispatch passthrough: activations already carry group-32 e8m0
+            # scales, so skip the quant and only sort the scale, exactly as the
+            # fp4x2 pre-quantized branch below does.
+            a1 = hidden_states
+            a1_scale = mxfp4_moe_sort_fwd(
+                a1_scale,
+                sorted_ids=sorted_ids,
+                num_valid_ids=num_valid_ids,
+                token_num=token_num,
+                cols=model_dim,
             )
         else:
             # stage1 input is not topk-replicated, so M==token_num and the HIP
