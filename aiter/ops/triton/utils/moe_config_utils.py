@@ -8,7 +8,8 @@ from typing import Any
 import torch
 
 from ._triton import arch_info
-from .core import AITER_TRITON_CONFIGS_PATH, USE_LRU_CACHE, load_config_json
+from .core import USE_LRU_CACHE, load_config_json
+from .gemm_config_utils import resolve_config_dir
 
 M_THRESHOLD_SMALL = 256
 M_THRESHOLD_MEDIUM = 1024
@@ -53,9 +54,10 @@ def get_moe_configs(dtype: str | None) -> dict[int, Any] | None:
     # directory
     dtype_str = "DEFAULT" if dtype is None else dtype
     dev = arch_info.get_arch()
-    configs = load_config_json(
-        f"{AITER_TRITON_CONFIGS_PATH}/moe/{dev}-MOE-{dtype_str}.json", required=False
-    )
+    # Nested layout only: the returned name prefix is always empty, so the
+    # default file is DEFAULT.json under <arch>/triton/moe/<d_type>/.
+    cfg_dir, _ = resolve_config_dir("moe", f"MOE-{dtype_str}", backend="triton")
+    configs = load_config_json(f"{cfg_dir}/DEFAULT.json", required=False)
     if configs is not None:
         return configs
 

@@ -25,18 +25,23 @@ from aiter.ops.triton._triton_kernels.moe.moe_op_gemm_a8w4 import (
 from aiter.ops.triton.moe.moe_routing.routing import RoutingData
 from aiter.ops.triton.moe.reduce import reduce_grouped
 from aiter.ops.triton.utils._triton.arch_info import get_arch
-from aiter.ops.triton.utils.core import AITER_TRITON_CONFIGS_PATH, load_config_json
+from aiter.ops.triton.utils.core import load_config_json
 from aiter.ops.triton.utils.device_info import get_num_sms
-from aiter.ops.triton.utils.gemm_config_utils import pick_gemm_num_stages
+from aiter.ops.triton.utils.gemm_config_utils import (
+    pick_gemm_num_stages,
+    resolve_config_dir,
+)
 
 
 def _get_a8w4_dispatch(arch: str) -> dict:
     """Per-(block_m, N, K) dispatch table for moe_gemm_a8w4. Returns {} if no
     tuned file is shipped for this arch (caller uses the safe-default fallback).
-    Mirrors get_moe_configs() in utils/moe_config_utils.py."""
-    dispatch = load_config_json(
-        f"{AITER_TRITON_CONFIGS_PATH}/moe/{arch}-A8W4.json", required=False
-    )
+    Mirrors get_moe_configs() in utils/moe_config_utils.py.
+
+    ``arch`` stays in the signature for the callers that already resolved it;
+    resolve_config_dir() reads the same value from arch_info."""
+    cfg_dir, _ = resolve_config_dir("moe", "A8W4", backend="triton")
+    dispatch = load_config_json(f"{cfg_dir}/DEFAULT.json", required=False)
     return dispatch if dispatch is not None else {}
 
 
