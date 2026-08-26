@@ -20,9 +20,9 @@ TO be added features:
 import triton
 import triton.language as tl
 
-from aiter.ops.triton.utils._triton import arch_info
 from aiter.ops.triton.utils._triton.kernel_repr import make_kernel_repr
-from aiter.ops.triton.utils.core import AITER_TRITON_CONFIGS_PATH, load_config_json
+from aiter.ops.triton.utils.core import load_config_json
+from aiter.ops.triton.utils.gemm_config_utils import resolve_config_dir
 
 # Support tensor in [B, Seqlen, H, d] format. Taking tensors in [B*Seqlen, H, d] as inputs
 
@@ -30,10 +30,8 @@ from aiter.ops.triton.utils.core import AITER_TRITON_CONFIGS_PATH, load_config_j
 def _get_config():
     # No lru_cache here: load_config_json already caches the parse, and
     # caching the .copy() would hand every caller the same mutable object.
-    dev = arch_info.get_arch()
-    config = load_config_json(
-        f"{AITER_TRITON_CONFIGS_PATH}/{dev}-LEANATTN-DEFAULT.json"
-    )
+    cfg_dir, _ = resolve_config_dir("attention", "LEANATTN", backend="triton")
+    config = load_config_json(f"{cfg_dir}/DEFAULT.json")
     return config["any"].copy()  # fresh copy per call — safe for callers to mutate
 
 
