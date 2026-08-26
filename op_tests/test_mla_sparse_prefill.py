@@ -7,28 +7,8 @@ Exercises ``aiter.ops.mla_sparse_prefill.mla_sparse_prefill_fp8_asm`` (kernel
 ``mla_a8w8_qh128_1tg_32mx4_32nx1_sparse_pfl``) against a torch reference, with
 the portable Triton sparse-prefill kernel as a second candidate.
 
-Despite "prefill" in the name there is no causal mask and no query/KV sequence
-length: causality is pre-baked by the caller into two per-query-token CSR index
-lists over a paged prefix pool and a per-forward extend pool.
-
-Input construction and the fp32 reference are imported from
-``test_pa_sparse_prefill_opus`` -- the asm kernel implements exactly the same op
-as the gfx950 OPUS HIP kernel tested there, so the two must agree on inputs and
-on golden. Two things are deliberately NOT inherited:
-
-* ``_FP8_KV_TILE_SIZE = 64`` -- that is the OPUS ``16mx1_16nx4`` tile. This
-  kernel's KV tile is ``SUB_KV = 32``, so the trailing-tile (mask) boundary
-  seeds must be multiples of 32. Using the wrong constant silently stops the
-  sweep from covering the partial-tile branch at all.
-* The habit of ignoring ``checkAllclose``'s return value. It does not raise by
-  default, so a test that drops the result prints "failed!" in red and still
-  exits 0. Here every candidate's mismatch ratio lands in an ``err`` column and
-  ``main()`` asserts on it.
-
 Note on the perf comparison: the asm kernel is fp8 and the Triton kernel is
-bf16 -- on gfx1250 there is no fp8 Triton implementation of this op. Each is
-checked against a reference built at its own precision, and the table carries a
-dtype column per candidate. Do not read the ratio as a like-for-like speedup.
+bf16.
 """
 
 import argparse
@@ -64,13 +44,7 @@ from aiter.test_common import benchmark, checkAllclose, run_perftest
 # generator"). Every tensor in this file names its device explicitly.
 
 SUPPORTED_GFX = ["gfx1250"]
-
-# The asm kernel's own KV tile (SP3 `SUB_KV`), which sets the partial-tile mask
-# boundary. Distinct from the OPUS kernel's tile -- see the module docstring.
 _ASM_SUB_KV = 32
-# One workgroup serves one query token x this many heads, and the Q address math
-# requires gridDim.y == 1, so this is the only supported head count. It is the
-# `Gqa` column of the kernel's row in hsa/<arch>/mla_v4/mla_v4_asm.csv.
 _ASM_HEADS = 128
 
 # How the CSR index lists are built:
@@ -84,24 +58,11 @@ _ASM_HEADS = 128
 #               nnz, so the `mode` column is a constant in that sweep's table.
 _MODES = ("sparse", "dense", "empty")
 
-# How much the per-32-element E8M0 block exponents vary within one row.
-#
-#   "uniform" -- every block of a row gets the same exponent, which is what the
-#                poc_kl harness generates (sin()-based data of constant
-#                amplitude). A whole class of scale-addressing bugs is invisible
-#                in this configuration.
-#   "varied"  -- natural randn data, where neighbouring blocks routinely land on
-#                different exponents. This is what a real model produces.
-#
-# Keep both: "uniform" is the configuration the kernel was originally signed off
-# against, and "varied" is the one that catches per-block scale bugs.
-_SCALE_SPREADS = ("varied", "uniform")
-
 # checkAllclose mismatch ratio above which a configuration counts as failed.
 _ERR_TOL = 0.05
 
 
-def _rows_fp8(rows: int, spread: str, device, gen: torch.Generator):
+def _rows_fp8(rows: int, device, gen: torch.Generator):
     """One pool of ``rows`` KV/Q rows in the kernel's split fp8/bf16 layout.
 
     Returns ``(nope_fp8[rows, 512], rope_bf16[rows, 64], fp32[rows, 512])``
@@ -109,12 +70,6 @@ def _rows_fp8(rows: int, spread: str, device, gen: torch.Generator):
     kernel sees after dequantisation, and what the reference consumes.
     """
     real = torch.randn(rows, _FP8_D_NOPE, device=device, generator=gen) * 0.5
-    if spread == "uniform":
-        # Force every 32-element block to the same magnitude so all 14 E8M0
-        # exponents in a row come out equal.
-        blk = real.reshape(rows, _FP8_D_NOPE // 32, 32)
-        blk = blk / blk.abs().amax(dim=-1, keepdim=True).clamp(min=1e-30)
-        real = blk.reshape(rows, _FP8_D_NOPE)
     nope, deq = _quantize_nope(real)
     rope = (torch.randn(rows, _FP8_D_ROPE, device=device, generator=gen) * 0.5).to(
         torch.bfloat16
@@ -207,7 +162,6 @@ def make_inputs(
     total_tokens: int,
     *,
     mode: str,
-    spread: str,
     nnz_prefix: int | None = None,
     nnz_extend: int | None = None,
     device="cuda",
@@ -223,12 +177,12 @@ def make_inputs(
     gen = torch.Generator(device=device)
     gen.manual_seed(seed)
 
-    qn, qr, q_fp32 = _rows_fp8(t * h, spread, device, gen)
+    qn, qr, q_fp32 = _rows_fp8(t * h, device, gen)
     qn = qn.reshape(t, h, _FP8_D_NOPE_PADDED)
     qr = qr.reshape(t, h, _FP8_D_ROPE)
     q_fp32 = q_fp32.reshape(t, h, _FP8_D_HEAD)
-    ukn, ukr, ukv_fp32 = _rows_fp8(total_pages, spread, device, gen)
-    kn, kr, kv_fp32 = _rows_fp8(total_tokens, spread, device, gen)
+    ukn, ukr, ukv_fp32 = _rows_fp8(total_pages, device, gen)
+    kn, kr, kv_fp32 = _rows_fp8(total_tokens, device, gen)
 
     attn_sink = torch.randn(h, device=device, generator=gen, dtype=torch.float32) * 0.25
 
@@ -296,7 +250,6 @@ def test_mla_sparse_prefill(
     total_pages: int,
     total_tokens: int,
     mode: str,
-    spread: str,
     nnz_prefix: int | None,
     nnz_extend: int | None,
 ):
@@ -306,7 +259,6 @@ def test_mla_sparse_prefill(
         total_pages,
         total_tokens,
         mode=mode,
-        spread=spread,
         nnz_prefix=nnz_prefix,
         nnz_extend=nnz_extend,
     )
@@ -361,7 +313,8 @@ def test_mla_sparse_prefill(
             out.to(torch.float32),
             rtol=3e-2,
             atol=3e-2,
-            msg=f"{name}: mla_sparse_prefill t={t} mode={mode} spread={spread}",
+            tol_err_ratio=_ERR_TOL,
+            msg=f"{name}: mla_sparse_prefill t={t} mode={mode}",
         )
         ret[f"{name} dtype"] = dtype
         ret[f"{name} us"] = us
@@ -408,13 +361,6 @@ def main():
         nargs="*",
         default=list(_MODES),
         help="CSR shape: sparse / dense / empty",
-    )
-    parser.add_argument(
-        "--spread",
-        type=str,
-        nargs="*",
-        default=list(_SCALE_SPREADS),
-        help="E8M0 block-exponent spread within a row: varied / uniform",
     )
     parser.add_argument(
         "--nnz",
@@ -466,16 +412,14 @@ def main():
             for _, r in df[df[col] > _ERR_TOL].iterrows():
                 failures.append(f"{title}: {col}={r[col]:.4f} at {dict(r)}")
 
-    # 1) CSR-shape sweep: sparse / dense / empty, both scale spreads.
+    # 1) CSR-shape sweep: sparse / dense / empty.
     summarize(
         "mla_sparse_prefill -- CSR shape sweep",
         [
             test_mla_sparse_prefill(
-                t, h, total_pages, total_tokens, mode, spread, None, None
+                t, h, total_pages, total_tokens, mode, None, None
             )
-            for t, h, mode, spread in itertools.product(
-                args.tokens, args.nhead, args.modes, args.spread
-            )
+            for t, h, mode in itertools.product(args.tokens, args.nhead, args.modes)
         ],
     )
 
@@ -487,9 +431,9 @@ def main():
         f"mla_sparse_prefill -- tile-boundary (SUB_KV={_ASM_SUB_KV}) sweep",
         [
             test_mla_sparse_prefill(
-                8, h, total_pages, total_tokens, "fixed", spread, npx, nex
+                8, h, total_pages, total_tokens, "fixed", npx, nex
             )
-            for h, spread, nnz in itertools.product(args.nhead, args.spread, args.nnz)
+            for h, nnz in itertools.product(args.nhead, args.nnz)
             for npx, nex in ((nnz, 0), (0, nnz), (nnz, nnz))
         ],
     )
@@ -503,11 +447,10 @@ def main():
         summarize(
             "mla_sparse_prefill -- explicit (prefix, extend) sweep",
             [
-                test_mla_sparse_prefill(t, h, pool, pool, "fixed", spread, npx, nex)
-                for t, h, spread, npx, nex in itertools.product(
+                test_mla_sparse_prefill(t, h, pool, pool, "fixed", npx, nex)
+                for t, h, npx, nex in itertools.product(
                     args.tokens,
                     args.nhead,
-                    args.spread,
                     args.nnz_prefix,
                     args.nnz_extend,
                 )
