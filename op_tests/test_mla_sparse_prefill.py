@@ -416,9 +416,7 @@ def main():
     summarize(
         "mla_sparse_prefill -- CSR shape sweep",
         [
-            test_mla_sparse_prefill(
-                t, h, total_pages, total_tokens, mode, None, None
-            )
+            test_mla_sparse_prefill(t, h, total_pages, total_tokens, mode, None, None)
             for t, h, mode in itertools.product(args.tokens, args.nhead, args.modes)
         ],
     )
@@ -430,9 +428,7 @@ def main():
     summarize(
         f"mla_sparse_prefill -- tile-boundary (SUB_KV={_ASM_SUB_KV}) sweep",
         [
-            test_mla_sparse_prefill(
-                8, h, total_pages, total_tokens, "fixed", npx, nex
-            )
+            test_mla_sparse_prefill(8, h, total_pages, total_tokens, "fixed", npx, nex)
             for h, nnz in itertools.product(args.nhead, args.nnz)
             for npx, nex in ((nnz, 0), (0, nnz), (nnz, nnz))
         ],
