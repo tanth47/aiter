@@ -109,7 +109,7 @@ def mla_sparse_prefill_fp8_asm(
 
     t, h = q_nope.shape[0], q_nope.shape[1]
     if h != 128:
-        # Hard constraint, not a dispatch miss -- see the module docstring.
+        # Hard constraint, not a dispatch miss.
         raise RuntimeError(f"mla_sparse_prefill_fp8_asm requires H == 128, got {h}")
     if out is None:
         out = torch.empty((t, h, 512), dtype=torch.bfloat16, device=q_nope.device)
