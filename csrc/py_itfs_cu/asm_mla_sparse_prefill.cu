@@ -50,11 +50,6 @@ static_assert(offsetof(MlaSparsePrefillKargs, kv_indptr_extend) == 0x50, "kernar
 static_assert(offsetof(MlaSparsePrefillKargs, kv_indices_extend) == 0x58, "kernarg offset drift");
 static_assert(offsetof(MlaSparsePrefillKargs, softmax_scale) == 0x60, "kernarg offset drift");
 
-// The kernel is built for exactly 128 heads in a single 128-thread (4 x wave32)
-// workgroup. This is a hard constraint, not a tuning hint: the Q address is
-// computed as `q_nope + (tgid.y + tgid.x) * 128 * 512 + wave_id * 32 * 512` --
-// the head-block index is folded in *additively*, which is only correct while
-// gridDim.y == 1. Any other H silently reads out of bounds, so reject it.
 constexpr int kHeads      = 128; // == the CSV's Gqa for the one prefill row
 constexpr int kHeadDim    = 512; // NoPE packed row: 448 fp8 + 14 e8m0 scales + 50 pad
 constexpr int kRopeDim    = 64;
@@ -85,10 +80,7 @@ void check_tensor(const aiter_tensor_t* t,
                 "mla_sparse_prefill_fp8_asm: `", name, "` must be contiguous");
 }
 
-// CSR row pointers are read as [T+1] int32. An empty index list is legal (the
-// kernel parks the prefix->extend switch index at 0x7fffffff when the extend
-// side is empty, and branches straight to the extend stream when the prefix
-// side is), but a NULL buffer is not: the SQC index prefetch would fault.
+// CSR row pointers are read as [T+1] int32. An empty index list is legal.
 void check_csr(const aiter_tensor_t* indptr,
                const aiter_tensor_t* indices,
                const char* indptr_name,

@@ -1,40 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (C) 2024-2026, Advanced Micro Devices, Inc. All rights reserved.
 
-"""Hand-written asm sparse paged prefill attention for DeepSeek-V4 on gfx1250.
-
-The asm counterpart of :mod:`aiter.ops.pa_sparse_prefill_opus`'s fp8 entry.
-Same two-region sparse scaled-dot-product attention over a paged prefix source
-(``unified_kv_*``) and a flat per-fwd extend source (``kv_*``), same split
-fp8-NoPE / bf16-RoPE input layout, same per-head fp32 softmax-denominator sink,
-same ``[T, H, 512]`` bf16 output. Only the backend differs: gfx950 runs the
-OPUS HIP kernel, gfx1250 runs the ``32mx4_32nx1`` SP3 kernel through this
-module. The signature is kept identical so callers and tests can swap one for
-the other.
-
-Despite "prefill" in the name there is no causal mask and no notion of query or
-KV sequence length -- causality is pre-baked by the caller into the two CSR
-index lists, exactly as for the OPUS op.
-
-Constraints of the single kernel variant shipped today:
-
-* ``H == 128`` exactly. One workgroup serves one query token x 128 heads, and
-  the kernel's Q address math folds the head-block index in additively, so it
-  is only correct while ``gridDim.y == 1``. Other head counts are rejected
-  rather than silently mis-read.
-* Head dim ``512`` (NoPE row: 448 fp8 values + 14 E8M0 block scales + padding)
-  and RoPE dim ``64``.
-* KV tile size is ``32``; partial trailing tiles are masked by the kernel, so
-  ``nnz`` need not be a multiple of anything.
-* Registered as the ``prefill=1`` row of ``hsa/<arch>/mla_v4/mla_v4_asm.csv``
-  (kernel ``mla_a8w8_qh128_1tg_32mx4_32nx1_sparse_pfl``).
-* Empty CSR rows (``kv_indptr[i] == kv_indptr[i + 1]``) are allowed, and either
-  region may be entirely empty -- but the index/indptr tensors themselves must
-  still be real allocations, never ``None``.
-
-See ``csrc/py_itfs_cu/asm_mla_sparse_prefill.cu`` for the kernarg ABI.
-"""
-
 import torch
 
 from ..jit.core import compile_ops
