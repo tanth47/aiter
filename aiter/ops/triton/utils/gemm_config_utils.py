@@ -27,13 +27,16 @@ def resolve_config_dir(
     config_name: str,
     backend: str | None = None,
     legacy_dir: str | None = None,
+    arch: str | None = None,
 ) -> tuple[str, str]:
     """Return (cfg_dir, name_prefix) for the first candidate whose default
     file exists: DEFAULT.json when name_prefix is empty (the nested layout,
     dir from _dtype_dir()), else <name_prefix><config_name>.json. Falls back
-    to the last candidate so the missing-file assertion names a legacy path."""
+    to the last candidate so the missing-file assertion names a legacy path.
+    ``arch`` overrides the running architecture, for loaders that retry under
+    another arch when the running one has no tuned configs."""
     dtype_dir = _dtype_dir(config_name)
-    dev = arch_info.get_arch()
+    dev = arch if arch is not None else arch_info.get_arch()
     arch_prefix = f"{dev}-"
     if backend is None:
         candidates = [
