@@ -20,8 +20,8 @@ from aiter.ops.triton._triton_kernels.moe.moe_op_gemm_a4w4 import (
 from aiter.ops.triton.moe.moe_routing.routing import RoutingData
 from aiter.ops.triton.moe.reduce import reduce_grouped
 from aiter.ops.triton.utils._triton.arch_info import get_arch
-from aiter.ops.triton.utils.core import load_config_json
-from aiter.ops.triton.utils.gemm_config_utils import (
+from aiter.ops.triton.utils.config_utils import (
+    load_config_json,
     pick_gemm_num_stages,
     resolve_config_dir,
 )
@@ -34,7 +34,7 @@ def _get_a4w4_dispatch(arch: str) -> dict:
 
     ``arch`` stays in the signature for the callers that already resolved it;
     resolve_config_dir() reads the same value from arch_info."""
-    cfg_dir, _ = resolve_config_dir("moe", "A4W4", backend="triton")
+    cfg_dir = resolve_config_dir("moe", "A4W4", backend="triton")
     dispatch = load_config_json(f"{cfg_dir}/DEFAULT.json", required=False)
     return dispatch if dispatch is not None else {}
 

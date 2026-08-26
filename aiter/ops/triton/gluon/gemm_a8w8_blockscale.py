@@ -12,8 +12,7 @@ from triton.runtime.jit import constexpr_function
 
 from aiter.ops.triton.utils._triton import arch_info
 from aiter.ops.triton.utils._triton.pid_preprocessing import pid_grid, remap_xcd
-from aiter.ops.triton.utils.core import load_config_json
-from aiter.ops.triton.utils.gemm_config_utils import resolve_config_dir
+from aiter.ops.triton.utils.config_utils import load_config_json, resolve_config_dir
 from aiter.ops.triton.utils.logger import AiterTritonLogger
 
 _LOGGER = AiterTritonLogger()
@@ -994,7 +993,7 @@ def _get_config_cached(
     # This family's configs live in the nested layout, so its directory is the
     # only candidate and the returned name prefix is always empty: nested files
     # carry no arch prefix and name their default DEFAULT.json.
-    cfg_dir, _ = resolve_config_dir("gemm", "GEMM-A8W8_BLOCKSCALE", backend="gluon")
+    cfg_dir = resolve_config_dir("gemm", "GEMM-A8W8_BLOCKSCALE", backend="gluon")
 
     # Try specialized config first.
     config_dict = load_config_json(

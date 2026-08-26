@@ -9,7 +9,7 @@ from aiter.ops.triton._triton_kernels.gemm.fused.fused_gemm_a8w8_blockscale_mul_
     _fused_gemm_a8w8_blockscale_mul_add_reduce_kernel,
     _get_config,
 )
-from aiter.ops.triton.utils.gemm_config_utils import compute_splitk_params
+from aiter.ops.triton.utils.config_utils import compute_splitk_params
 from aiter.ops.triton.utils.logger import AiterTritonLogger
 
 _LOGGER = AiterTritonLogger()

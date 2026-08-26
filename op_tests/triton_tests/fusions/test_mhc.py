@@ -26,7 +26,7 @@ import pytest
 import torch
 
 from aiter.ops.triton.fusions.mhc import mhc, mhc_post, mhc_post_pre
-from aiter.ops.triton.utils.mhc_config_utils import (
+from aiter.ops.triton.utils.config_utils import (
     hip_post_dispatch_block as _hip_post_dispatch_block,
 )
 from aiter.test_common import checkAllclose

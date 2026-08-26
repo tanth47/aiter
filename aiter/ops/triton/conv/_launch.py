@@ -38,7 +38,7 @@ from aiter.ops.triton._triton_kernels.conv.conv_general import (
     _get_config as _get_config_general,
 )
 from aiter.ops.triton.conv._utils import _is_winograd_eligible, _out_hw
-from aiter.ops.triton.utils.conv_config_utils import format_shape_key
+from aiter.ops.triton.utils.config_utils import format_shape_key
 
 
 def _make_mn_grid(M_total, K_out):

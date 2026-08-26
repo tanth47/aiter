@@ -24,7 +24,7 @@ from aiter.ops.triton._triton_kernels.gmm import (
 )
 
 # AITER: GMM utility functions
-from aiter.ops.triton.utils.gmm_common import (
+from aiter.ops.triton._triton_kernels.gmm_common import (
     DTYPE,
     check_bias_shape_stride,
     check_input_device_dtype,

@@ -132,14 +132,13 @@ _BACKWARD_COMPAT_MAP = {
     "fused_qkv_split_qk_rope": "rope.fused_qkv_split_qk_rope",
     # Utils modules (utils/)
     "common_utils": "utils.common_utils",
-    "core": "utils.core",
+    "config_utils": "utils.config_utils",
     "device_info": "utils.device_info",
-    "gmm_common": "utils.gmm_common",
-    "la_kernel_utils": "utils.la_kernel_utils",
+    "gmm_common": "_triton_kernels.gmm_common",
+    "la_kernel_utils": "_triton_kernels.attention.la_kernel_utils",
     "logger": "utils.logger",
-    "mha_kernel_utils": "utils.mha_kernel_utils",
+    "mha_kernel_utils": "utils._triton.mha_kernel_utils",
     "moe_common": "utils.moe_common",
-    "moe_config_utils": "utils.moe_config_utils",
     "types": "utils.types",
     # Quant modules (quant/)
     "fused_fp8_quant": "quant.fused_fp8_quant",

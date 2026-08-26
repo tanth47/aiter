@@ -41,7 +41,7 @@ import torch
 import triton
 
 from aiter.ops.triton.fusions.mhc import mhc, mhc_post
-from aiter.ops.triton.utils.mhc_config_utils import hip_post_dispatch_block
+from aiter.ops.triton.utils.config_utils import hip_post_dispatch_block
 from aiter.test_common import checkAllclose
 from op_tests.op_benchmarks.triton.utils.benchmark_utils import (
     get_caller_name_no_ext,

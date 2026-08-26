@@ -13,11 +13,11 @@ from aiter.ops.triton._triton_kernels.fusions import (
     _mhc_reduce_apply_kernel,
 )
 from aiter.ops.triton.utils._triton import arch_info
-from aiter.ops.triton.utils.logger import AiterTritonLogger
-from aiter.ops.triton.utils.mhc_config_utils import (
+from aiter.ops.triton.utils.config_utils import (
     get_mhc_config,
     get_mhc_post_config,
 )
+from aiter.ops.triton.utils.logger import AiterTritonLogger
 
 DEVICE_ARCH = arch_info.get_arch()
 

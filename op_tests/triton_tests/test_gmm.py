@@ -16,19 +16,8 @@ import pytest
 import torch
 from torch import Tensor
 
-# AITER: Triton kernel wrappers
-from aiter.ops.triton.gmm import (
-    gmm as triton_gmm,
-)
-from aiter.ops.triton.gmm import (
-    nptgmm as triton_nptgmm,
-)
-from aiter.ops.triton.gmm import (
-    ptgmm as triton_ptgmm,
-)
-
 # AITER: GMM defaults and utility functions
-from aiter.ops.triton.utils.gmm_common import (
+from aiter.ops.triton._triton_kernels.gmm_common import (
     DTYPE,
     check_input_device_dtype,
     gen_gmm_tensors,
@@ -38,6 +27,17 @@ from aiter.ops.triton.utils.gmm_common import (
     get_tgmm_bias_grad,
     get_tgmm_output,
     get_tgmm_shape,
+)
+
+# AITER: Triton kernel wrappers
+from aiter.ops.triton.gmm import (
+    gmm as triton_gmm,
+)
+from aiter.ops.triton.gmm import (
+    nptgmm as triton_nptgmm,
+)
+from aiter.ops.triton.gmm import (
+    ptgmm as triton_ptgmm,
 )
 
 # Common code shared by GMM and TGMM unit tests.

@@ -15,19 +15,8 @@ import torch
 # Triton
 import triton
 
-# AITER: Triton kernel wrappers
-from aiter.ops.triton.gmm import (
-    gmm as triton_gmm,
-)
-from aiter.ops.triton.gmm import (
-    nptgmm as triton_nptgmm,
-)
-from aiter.ops.triton.gmm import (
-    ptgmm as triton_ptgmm,
-)
-
 # AITER: GMM defaults and utility functions
-from aiter.ops.triton.utils.gmm_common import (
+from aiter.ops.triton._triton_kernels.gmm_common import (
     DTYPE,
     DTYPE_STR,
     GROUP_SIZES_DTYPE,
@@ -44,6 +33,17 @@ from aiter.ops.triton.utils.gmm_common import (
     group_sizes_dtype_from_str,
     str_from_dtype,
     str_from_group_sizes_dtype,
+)
+
+# AITER: Triton kernel wrappers
+from aiter.ops.triton.gmm import (
+    gmm as triton_gmm,
+)
+from aiter.ops.triton.gmm import (
+    nptgmm as triton_nptgmm,
+)
+from aiter.ops.triton.gmm import (
+    ptgmm as triton_ptgmm,
 )
 
 logger = logging.getLogger(__name__)

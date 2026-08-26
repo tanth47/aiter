@@ -12,7 +12,7 @@ from aiter.ops.triton.gemm.basic.gemm_afp8wfp8 import (
     gemm_afp8wfp8_preshuffle,
 )
 from aiter.ops.triton.utils._triton import arch_info
-from aiter.ops.triton.utils.gemm_config_utils import get_gemm_config
+from aiter.ops.triton.utils.config_utils import get_gemm_config
 from aiter.test_common import checkAllclose
 
 SCALE_GROUP_SIZE = 32  # A: 1x32 e8m0 scale group

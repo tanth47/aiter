@@ -7,8 +7,7 @@ import triton
 import triton.language as tl
 
 from aiter.ops.triton.utils._triton.kernel_repr import make_kernel_repr
-from aiter.ops.triton.utils.core import load_config_json
-from aiter.ops.triton.utils.gemm_config_utils import resolve_config_dir
+from aiter.ops.triton.utils.config_utils import load_config_json, resolve_config_dir
 
 _routing_sigmoid_top1_repr = make_kernel_repr(
     "_routing_sigmoid_top1_kernel",
@@ -126,9 +125,7 @@ def _routing_sigmoid_top1_kernel(
 
 @functools.lru_cache(maxsize=1024)
 def _get_config(M, N, K):
-    cfg_dir, _ = resolve_config_dir(
-        "moe", "MOE_ROUTING_SIGMOID_TOPK1", backend="triton"
-    )
+    cfg_dir = resolve_config_dir("moe", "MOE_ROUTING_SIGMOID_TOPK1", backend="triton")
     config = load_config_json(f"{cfg_dir}/DEFAULT.json")
 
     n_key = "N16" if N <= 16 else "N128"
