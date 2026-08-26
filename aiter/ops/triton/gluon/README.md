@@ -78,7 +78,7 @@ Some features (e.g., scheduling hints like `sched_barrier`) require the [AMD Glu
 | Output | bf16 or fp16 |
 | Scales | per-row (A), per-column (B), float32 |
 | Tunable | BLOCK_SIZE_M/N/K, GROUP_SIZE_M, NUM_XCDS, NUM_WARPS |
-| Config | `$AITER_TRITON_CONFIGS_PATH/gemm/gluon/gfx950-GEMM-A8W8.json` |
+| Config | `$AITER_TRITON_CONFIGS_PATH/gfx950/gluon/gemm/gemm_a8w8/DEFAULT.json` |
 
 ---
 
